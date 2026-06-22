@@ -50,6 +50,39 @@ def konsole(cfg, abg, empfehlung, zeilen):
     print()
 
 
+def konsole_parallel(cfg, abg, vorschlaege, k_faktor, ik_a=None, t_aus_s=None):
+    """Gibt den Aufteilungs-Vorschlag (n parallele Kabel pro Aussenleiter) aus."""
+    print(f"\nAufteilung auf parallele Kabel pro Aussenleiter (Ib = {cfg['strom']:.0f} A):")
+    print("  n x mm2    Iz gesamt   dU[%]   k_Haeuf   Kurzschluss Einzelleiter")
+    for v in vorschlaege:
+        if v["s"] is None:
+            print(f"  {v['n']} x  —      (kein Querschnitt im Tabellenbereich passt)")
+            continue
+        # Kurzschluss-Spalte
+        if ik_a is not None and v.get("ks"):
+            ks = v["ks"]
+            if ks["ok"] is None:
+                ks_txt = f"t_zul={ks['t_zul']:.3f}s (Ausl.-Zeit angeben fuer OK/NEIN)"
+            else:
+                marker = "OK" if ks["ok"] else "NEIN"
+                ks_txt = f"t_zul={ks['t_zul']:.3f}s  >= t_aus={t_aus_s:.3f}s? {marker}"
+        else:
+            ks_txt = "Ik nicht angegeben -> Nachweis offen"
+        print(f"  {v['n']} x {str(v['s']).rjust(4)}  {v['iz_gesamt']:>8.1f}   "
+              f"{v['du']:>5.2f}   {v['k_group']:>5.2f}    {ks_txt}")
+
+    print("\n  Voraussetzung gleichmaessige Stromaufteilung (NIN 5.2.3 / IEC 523.7):")
+    print("  gleiche Laenge, gleicher Querschnitt, gleiches Material, gleiche Anordnung.")
+
+    if ik_a is None:
+        print("\n  KURZSCHLUSS-NACHWEIS ERFORDERLICH:")
+        print("  Jeder einzelne Parallelleiter muss den VOLLEN Ik am Einbauort aushalten")
+        print("  (nicht Ik/n!). Pruefen mit:  k^2 * S^2 >= Ik^2 * t_aus.")
+        print(f"  k-Faktor fuer {abg['material']}/{abg['isolation']} = {k_faktor} A*s^0.5/mm2.")
+        print("  Ik liefern via  --ik <kA> [--t-aus <s>]  oder per Pipe aus kurzschlussberechnung.")
+    print()
+
+
 def markdown(cfg, abg, empfehlung, zeilen, projekt, verteilung="", klemme="",
              verfasser="Samuel Hangartner"):
     """Erzeugt das piag-pdf-kompatible Markdown (Frontmatter + Body)."""

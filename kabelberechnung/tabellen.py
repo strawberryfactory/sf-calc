@@ -166,6 +166,21 @@ ALPHA_CU = 0.00393  # 1/K, Temperaturkoeffizient Cu
 
 
 # ============================================================
+# k-Faktor fuer den adiabatischen Kurzschluss-Nachweis (I2t)
+# IEC 60364-5-54 Tab. 43A, Einheit A*s^0.5/mm2.
+# Verwendung:  t_zul = (k * S / Ik)^2   bzw.   S_min = Ik * sqrt(t) / k
+# Schluessel: (material, isolation). Leiter-Anfangstemp 70 C (PVC) / 90 C (XLPE),
+# Endtemp PVC 160 C, XLPE/EPR 250 C.
+# ============================================================
+K_FAKTOR = {
+    ("Cu", "PVC"): 115,
+    ("Cu", "XLPE"): 143,   # gilt auch fuer EPR
+    ("Al", "PVC"): 76,
+    ("Al", "XLPE"): 94,
+}
+
+
+# ============================================================
 # Temperatur-Korrekturfaktoren k1 (Umgebungsluft, Referenz 30 C)
 # IEC 60364-5-52 Tab. B.52.14 — VERIFIZIERT (Standardtabelle)
 # ============================================================
