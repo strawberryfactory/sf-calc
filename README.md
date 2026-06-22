@@ -16,8 +16,7 @@ Stilvorbild: `note` / `agenda` — persistenter Zustand, der pro Aufruf via Flag
 ### Installation / Alias
 
 ```bash
-alias kabelberechnung='python3 -m kabelberechnung'
-# benötigt sf-calc im PYTHONPATH, z.B.:
+alias kabelberechnung='python3 .../sf-calc/kabelberechnung'
 export PYTHONPATH="$HOME/Documents/1_arbeit/1d_strawberryfactory/repos/sf-calc:$PYTHONPATH"
 ```
 
@@ -41,7 +40,7 @@ kabelberechnung print 3142 --verteilung UV4OG --klemme K12 [--pdf]
 | Param | Werte | Default |
 |-------|-------|---------|
 | `spannung` | 230 (1-ph) / 400 (3-ph) / 690 (3-ph) | 400 |
-| `verlegeart` | A1 A2 B1 B2 C D1 D2 E F G | C |
+| `verlegeart` | A1 A2 B1 B2 C D E F G | C |
 | `kabel` | FE05-C | FE05-C |
 | `strom` | A (Pflicht) | — |
 | `laenge` | m | 20 |
@@ -57,7 +56,6 @@ auf **n parallele Kabel** je Aussenleiter vor (n = 2, 3, 4) — automatisch, ode
 erzwungen mit `--parallel`.
 
 - Lastseitig: `Iz_gesamt = n · Iz · k_temp · k_häufung(n·Stromkreise)`, `ΔU = ΔU/n`.
-  Die Häufung der gebündelten Parallelkabel wird automatisch berücksichtigt.
 - **Kurzschluss (sicherheitskritisch):** jeder *einzelne* Parallelleiter muss den
   **vollen** Ik aushalten (nicht Ik/n — ein Fehler in einem Kabel führt den ganzen
   Strom über diesen Leiter). Adiabatisch: `k²·S² ≥ Ik²·t_aus`.
@@ -65,23 +63,15 @@ erzwungen mit `--parallel`.
 ```bash
 kabelberechnung calc --strom 600 --verlegeart E --parallel
 kabelberechnung calc --strom 600 --verlegeart E --ik 25 --t-aus 0.1   # mit KS-Nachweis
-kurzschlussberechnung … --json | kabelberechnung calc --strom 600     # Ik per Pipe
+kurzschlussberechnung calc --json | kabelberechnung calc --strom 600  # Ik per Pipe
 ```
-
-Ohne Ik gibt das Tool einen klaren „Kurzschluss-Nachweis erforderlich"-Block aus.
-Ik kommt per `--ik <kA>` (+ `--t-aus <s>`) oder als JSON über stdin
-(`{"ik_max_ka": …, "t_aus_s": …}`) — z. B. aus dem `kurzschlussberechnung`-Tool.
 
 ### `print` → Markdown für `/piag-pdf`
 
 Legt ein `.md` mit piag-pdf-kompatiblem Frontmatter im PIAG-Projektordner ab
 (Projektnummer-Auflösung wie die Shell-Funktion `p`). Dateiname:
-
-```
-<Projekt>_YYMMdd_Kabelberechnung[_<Verteilung>][_<Klemme>].md
-```
-
-`--pdf` ruft direkt `piag-pdf` auf; sonst in Claude `/piag-pdf` auf die Datei anwenden.
+`<Projekt>_YYMMdd_Kabelberechnung[_<Verteilung>][_<Klemme>].md`.
+`--pdf` ruft direkt `piag-pdf` auf.
 
 ### Datenstand (wichtig)
 
@@ -91,18 +81,53 @@ Iz-Tabellen werden **nur verifiziert** genutzt — kein Raten. Stand:
   je 1- und 3-phasig — abgelesen aus **NIN SN 411000:2025**, 5.2.3.1.1.11,
   Tab. 4–7 und 12/14 (Quelle: `referenz/nin_strombelastbarkeit_260622.pdf`).
 - ⏳ **F/G** (einadrige Kabel — brauchen zusätzliche Anordnungs-Dimension)
-  und **Aluminium** (braucht Al-Kabeltyp + Al-R′ für den Spannungsfall):
-  Daten liegen im NIN-PDF, Modellierung folgt im nächsten PR.
+  und **Aluminium** (braucht Al-Kabeltyp + Al-R′ für den Spannungsfall): folgt.
 
 `calc` verweigert nicht-verifizierte Kombinationen mit klarer Meldung.
-Abdeckung: `kabelberechnung show --tabellen`.
-
-Korrekturfaktoren (Temperatur Tab. B.52.14, Häufung Tab. B.52.17) und die
-Reaktanzbeläge X′ sind eingepflegt.
 
 > **Hinweis:** Das frühere `kabelrechnerFE05.py` nutzte unter dem Label
 > „Verlegeart C" faktisch die **B1**-Werte. Dieses Tool verwendet die echten
 > NIN-Spalten — Ergebnisse können daher von den Vorläufer-Skripten abweichen.
+
+---
+
+## kurzschlussberechnung
+
+CLI für die Kurzschlussberechnung nach **IEC 60909-0** (Netzeinspeisung → Trafo →
+Leitungskaskade). Pro Fehlerort `Ikmax` (cmax 1.10), `Ikmin` (cmin 0.95),
+Stossstrom `ip`, thermisch wirksamer Strom `Ith`, zulässige Kurzschlussdauer
+`Tkzul` (I²t). Rechenkern aus dem reviewten Studium-Skript (V. Wouters, HSLU).
+
+### Verwendung
+
+```bash
+kurzschlussberechnung -h
+kurzschlussberechnung set trafo 630     # Standardgrösse, füllt uk/ur automatisch
+kurzschlussberechnung set n_trafo 2     # parallele Trafos (Bank = n × kVA)
+kurzschlussberechnung set s 95          # Leitungsquerschnitt
+kurzschlussberechnung calc              # Schnellmodus (Netz → Trafo → 1 Leitung)
+kurzschlussberechnung calc --config netz.py   # komplexe Kaskade (.py mit CONFIG / .json)
+kurzschlussberechnung -i                # interaktiv (Trafo zuerst)
+```
+
+**Trafo aus Katalog** (für Frühphasen): `set trafo <kVA>` wählt 400 / 630 / 800 /
+1000 / 1600 kVA und belegt `uk`/`ur` mit typischen Default-Annahmen (Öl-
+Verteiltrafo Dyn5, projektweise prüfen). `set n_trafo <n>` für parallele Trafos.
+
+**Schnellmodus-Parameter** (`set <param> <wert>`): `un`, `sk`, `xq_rq` (Netz);
+`trafo`, `n_trafo`, `uk`, `ur` (Trafo); `s`, `laenge`, `material`, `isolierung`,
+`n_parallel`, `ta` (Leitung). Aluminium / mehrstufige Kaskaden über `--config`.
+
+### Verbindung zur Kabelberechnung (Pipe)
+
+`--json` gibt nur den Daten-Kontrakt aus → direkt in `kabelberechnung` pipebar:
+
+```bash
+kurzschlussberechnung calc --json | kabelberechnung calc --strom 600 --parallel
+```
+
+Kontrakt: `{"ik_max_ka": …, "ik_min_ka": …, "t_aus_s": …, "ort": "…"}`
+(`ik_max_ka` = Ik3max am Leitungsanfang, worst case für den I²t-Nachweis am Kabel).
 
 ---
 
@@ -112,7 +137,7 @@ Reaktanzbeläge X′ sind eingepflegt.
 |------|-------|
 | `leistungsrechner.py` | Wirk-/Blind-/Scheinleistung |
 | `kabelrechnerFE05.py`, `Kabelrechner1phFE05.py` | Vorläufer von `kabelberechnung` |
-| `Kurzschlussberechnung.py` | Ik max/min nach IEC 60909-0 |
+| `Kurzschlussberechnung.py` | Vorläufer von `kurzschlussberechnung` (Kern übernommen) |
 
 ---
 
