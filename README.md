@@ -50,6 +50,28 @@ kabelberechnung print 3142 --verteilung UV4OG --klemme K12 [--pdf]
 | `stromkreise` | Anzahl (Häufung) | 1 |
 | `max_du` | zul. ΔU % | 3 |
 
+### Parallelverlegung & Kurzschluss-Nachweis
+
+Reicht ein Einzelquerschnitt nicht (hohes `Ib`), schlägt das Tool die Aufteilung
+auf **n parallele Kabel** je Aussenleiter vor (n = 2, 3, 4) — automatisch, oder
+erzwungen mit `--parallel`.
+
+- Lastseitig: `Iz_gesamt = n · Iz · k_temp · k_häufung(n·Stromkreise)`, `ΔU = ΔU/n`.
+  Die Häufung der gebündelten Parallelkabel wird automatisch berücksichtigt.
+- **Kurzschluss (sicherheitskritisch):** jeder *einzelne* Parallelleiter muss den
+  **vollen** Ik aushalten (nicht Ik/n — ein Fehler in einem Kabel führt den ganzen
+  Strom über diesen Leiter). Adiabatisch: `k²·S² ≥ Ik²·t_aus`.
+
+```bash
+kabelberechnung calc --strom 600 --verlegeart E --parallel
+kabelberechnung calc --strom 600 --verlegeart E --ik 25 --t-aus 0.1   # mit KS-Nachweis
+kurzschlussberechnung … --json | kabelberechnung calc --strom 600     # Ik per Pipe
+```
+
+Ohne Ik gibt das Tool einen klaren „Kurzschluss-Nachweis erforderlich"-Block aus.
+Ik kommt per `--ik <kA>` (+ `--t-aus <s>`) oder als JSON über stdin
+(`{"ik_max_ka": …, "t_aus_s": …}`) — z. B. aus dem `kurzschlussberechnung`-Tool.
+
 ### `print` → Markdown für `/piag-pdf`
 
 Legt ein `.md` mit piag-pdf-kompatiblem Frontmatter im PIAG-Projektordner ab

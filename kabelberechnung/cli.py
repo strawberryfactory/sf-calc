@@ -11,6 +11,7 @@ cli.py — Kommandozeile fuer die Kabelberechnung.
 """
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -93,10 +94,50 @@ def _zeige_tabellen():
         print(f"\n  Noch offen (keine verifizierten Daten): {', '.join(fehlend)}")
 
 
+def _ik_aufloesen(args):
+    """
+    Liefert (ik_a, t_aus_s) fuer den Kurzschluss-Nachweis.
+    Quelle in Prioritaet:  --ik Flag  >  stdin-JSON (Pipe)  >  nichts.
+
+    Pipe-Format (z.B. aus kurzschlussberechnung):
+      {"ik_max_ka": 25.0, "t_aus_s": 0.1, ...}
+    """
+    # 1) explizites Flag (kA -> A)
+    if getattr(args, "ik", None) is not None:
+        return args.ik * 1000.0, getattr(args, "t_aus", None)
+    # 2) Pipe auf stdin (nur wenn nicht-interaktiv und Daten vorhanden)
+    if not sys.stdin.isatty():
+        roh = sys.stdin.read().strip()
+        if roh:
+            try:
+                daten = json.loads(roh)
+                ik_ka = daten.get("ik_max_ka") or daten.get("ik_ka")
+                if ik_ka is not None:
+                    t_aus = getattr(args, "t_aus", None) or daten.get("t_aus_s")
+                    return float(ik_ka) * 1000.0, t_aus
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
+    return None, getattr(args, "t_aus", None)
+
+
 def cmd_calc(args):
     cfg = _flags_anwenden(S.laden(), args)
+    ik_a, t_aus_s = _ik_aufloesen(args)
     abg, empfehlung, zeilen = _rechne(cfg)
     ausgabe.konsole(cfg, abg, empfehlung, zeilen)
+
+    # Parallel-Vorschlag: explizit (--parallel) oder automatisch, wenn kein
+    # einzelner Querschnitt thermisch+dU passt (typisch bei sehr hohem Ib).
+    if getattr(args, "parallel", False) or empfehlung is None:
+        vorschlaege, k_faktor = rechnen.dimensioniere_parallel(
+            strom_a=cfg["strom"], laenge_m=cfg["laenge"], cos_phi=abg["cosphi"],
+            spannung_v=cfg["spannung"], verlegeart=cfg["verlegeart"],
+            material=abg["material"], isolation=abg["isolation"],
+            umgebung_c=cfg["umgebung"], anzahl_stromkreise=cfg["stromkreise"],
+            max_du=cfg["max_du"], betriebstemp_c=abg["betriebstemp"],
+            ik_a=ik_a, t_aus_s=t_aus_s, k_faktor=getattr(args, "kfaktor", None),
+        )
+        ausgabe.konsole_parallel(cfg, abg, vorschlaege, k_faktor, ik_a, t_aus_s)
 
 
 def cmd_interactive(args):
@@ -212,6 +253,15 @@ def _calc_flags(p):
     p.add_argument("--umgebung", type=float, help="Umgebungstemperatur [C]")
     p.add_argument("--stromkreise", type=int, help="Anzahl gebuendelter Stromkreise")
     p.add_argument("--max_du", type=float, help="zul. Spannungsfall [%%]")
+    # Parallelverlegung / Kurzschluss (transient, nicht im State)
+    p.add_argument("--parallel", action="store_true",
+                   help="Aufteilung auf parallele Kabel (n=2,3,4) vorschlagen")
+    p.add_argument("--ik", type=float, metavar="kA",
+                   help="Kurzschlussstrom Ik [kA] fuer Einzelleiter-Nachweis")
+    p.add_argument("--t-aus", dest="t_aus", type=float, metavar="s",
+                   help="Ausloesezeit der Schutzeinrichtung [s]")
+    p.add_argument("--kfaktor", type=float,
+                   help="k-Faktor ueberschreiben (Default aus Kabel)")
 
 
 def build_parser():
