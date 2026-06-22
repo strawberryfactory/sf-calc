@@ -50,8 +50,9 @@ def konsole(ergebnis):
     print("Kurzschlussberechnung nach IEC 60909-0")
     print("=" * 72)
     print(f"Netz:   Un = {q['Un_V']:g} V, Sk\" = {q['Sk_MVA']:g} MVA")
-    print(f"Trafo:  SrT = {t['SrT_kVA']:g} kVA, uk = {t['uk_pct']:g} %, "
-          f"ur = {t['ur_pct']:g} %")
+    trafo_bez = t.get('_label', f"{t['SrT_kVA']:g} kVA")
+    print(f"Trafo:  {trafo_bez} (SrT = {t['SrT_kVA']:g} kVA), "
+          f"uk = {t['uk_pct']:g} %, ur = {t['ur_pct']:g} %")
     print(f"Kaskade: {len(cfg.get('leitungen', []))} Leitung(en)")
 
     print(f"\nIKMAX (cmax = {kern.C_MAX_LV:.2f}, kalte Leitung {kern.TEMP_KALT_C} C):")

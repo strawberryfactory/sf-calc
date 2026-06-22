@@ -60,7 +60,10 @@ def cmd_show(args):
     print(f"    sk          {cfg['sk']:g} MVA")
     print(f"    xq_rq       {cfg['xq_rq']:g}")
     print("  Trafo:")
-    print(f"    srt         {cfg['srt']:g} kVA")
+    bank = f"{cfg['n_trafo']}x " if cfg["n_trafo"] > 1 else ""
+    print(f"    trafo       {bank}{cfg['trafo']:g} kVA"
+          + (f"  (= {cfg['trafo'] * cfg['n_trafo']:g} kVA total)" if cfg["n_trafo"] > 1 else ""))
+    print(f"    n_trafo     {cfg['n_trafo']}")
     print(f"    uk          {cfg['uk']:g} %")
     print(f"    ur          {cfg['ur']:g} %")
     print("  Leitung zum Fehlerort:")
@@ -94,13 +97,22 @@ def cmd_calc(args):
 def cmd_interactive(args):
     cfg = S.laden()
     print("\nKurzschlussberechnung — interaktiv (Enter = aktueller Wert)\n")
+    # Trafo zuerst: Groesse aus Katalog waehlen, dann Anzahl parallel.
+    # uk/ur werden aus der Groesse uebernommen (Default-Annahmen).
+    print("Trafo waehlen:")
+    groessen = list(kern.TRAFO_KATALOG)
+    for i, kva in enumerate(groessen, 1):
+        kat = kern.TRAFO_KATALOG[kva]
+        mark = "*" if kva == cfg["trafo"] else " "
+        print(f"  [{i}]{mark} {kva:>4} kVA   (uk {kat['uk_pct']:g} %, ur {kat['ur_pct']:g} %)")
+    cfg["trafo"] = _wahl(groessen, cfg["trafo"], "Trafo")
+    kat = kern.TRAFO_KATALOG[cfg["trafo"]]
+    cfg["uk"], cfg["ur"] = kat["uk_pct"], kat["ur_pct"]   # Annahmen aus Katalog
+    cfg["n_trafo"] = _zahl("  Anzahl parallel n_trafo", cfg["n_trafo"], int)
+
     print("Netzeinspeisung:")
     cfg["un"] = _zahl("  Nennspannung un [V]", cfg["un"], float)
     cfg["sk"] = _zahl("  Kurzschlussleistung Sk\" [MVA]", cfg["sk"], float)
-    print("Trafo:")
-    cfg["srt"] = _zahl("  Bemessungsleistung srt [kVA]", cfg["srt"], float)
-    cfg["uk"] = _zahl("  Kurzschlussspannung uk [%]", cfg["uk"], float)
-    cfg["ur"] = _zahl("  Wirkanteil ur [%]", cfg["ur"], float)
     print("Leitung zum Fehlerort:")
     cfg["s"] = _zahl("  Querschnitt s [mm2]", cfg["s"], float)
     cfg["laenge"] = _zahl("  Laenge [m]", cfg["laenge"], float)
@@ -112,6 +124,20 @@ def cmd_interactive(args):
         print("✓ gespeichert")
 
     ausgabe.konsole(kern.berechne_szenario(S.build_config(cfg)))
+
+
+def _wahl(optionen, aktuell, label):
+    roh = input(f"{label} (1-{len(optionen)}) > ").strip()
+    if not roh:
+        return aktuell
+    try:
+        idx = int(roh)
+        if 1 <= idx <= len(optionen):
+            return optionen[idx - 1]
+    except ValueError:
+        pass
+    print("  ungueltig, behalte", aktuell)
+    return aktuell
 
 
 def _zahl(label, aktuell, typ):

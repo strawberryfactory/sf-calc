@@ -35,9 +35,15 @@ kurzschlussberechnung calc --config netz.py   # komplexe Kaskade (.py mit CONFIG
 kurzschlussberechnung -i                # interaktiv
 ```
 
+**Trafo aus Katalog** (für Frühphasen): `set trafo 630` wählt eine Standardgrösse
+(400 / 630 / 800 / 1000 / 1600 kVA) und füllt `uk`/`ur` mit typischen Default-
+Annahmen; `set n_trafo 2` für parallele Trafos (Bank = n × kVA, gleiches uk/ur).
+Im interaktiven Modus wird der Trafo zuerst gewählt.
+
 **Schnellmodus-Parameter** (`set <param> <wert>`): `un`, `sk`, `xq_rq` (Netz);
-`srt`, `uk`, `ur` (Trafo); `s`, `laenge`, `material`, `isolierung`, `n_parallel`,
-`ta` (Leitung). Für mehrstufige Kaskaden oder Aluminium den `--config`-Modus nutzen.
+`trafo`, `n_trafo`, `uk`, `ur` (Trafo, uk/ur aus Katalog vorbelegt); `s`, `laenge`,
+`material`, `isolierung`, `n_parallel`, `ta` (Leitung). Für mehrstufige Kaskaden
+oder Aluminium den `--config`-Modus nutzen.
 
 ### Verbindung zur Kabelberechnung (Pipe)
 

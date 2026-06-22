@@ -75,6 +75,21 @@ X0_FAKTOR_TBL = {
 
 NORMQUERSCHNITTE_MM2 = list(R_PRIME_20_CU.keys())
 
+# -----------------------------
+# Trafo-Katalog: Standard-Verteiltransformatoren mit Default-Annahmen
+# fuer Schnellberechnungen in fruehen Projektphasen.
+#   uk_pct : Kurzschlussspannung [%]   (IEC 60076: <=630 kVA -> 4%, >=800 kVA -> 6%)
+#   ur_pct : Wirkanteil = Pk / SrT * 100 [%]   (Pk = Last-/Kurzschlussverluste)
+# Werte typisch fuer Oel-Verteiltrafos Dyn5 -- ANNAHMEN, projektweise pruefen.
+# -----------------------------
+TRAFO_KATALOG = {
+    400:  {"uk_pct": 4.0, "ur_pct": 1.15, "pk_w": 4600},
+    630:  {"uk_pct": 4.0, "ur_pct": 1.03, "pk_w": 6500},
+    800:  {"uk_pct": 6.0, "ur_pct": 1.05, "pk_w": 8400},
+    1000: {"uk_pct": 6.0, "ur_pct": 1.05, "pk_w": 10500},
+    1600: {"uk_pct": 6.0, "ur_pct": 1.06, "pk_w": 17000},
+}
+
 
 # -----------------------------
 # Impedanzfunktionen
