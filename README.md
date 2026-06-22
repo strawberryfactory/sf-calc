@@ -139,6 +139,22 @@ Kontrakt: `{"ik_max_ka": …, "ik_min_ka": …, "t_aus_s": …, "ort": "…"}`
 | `kabelrechnerFE05.py`, `Kabelrechner1phFE05.py` | Vorläufer von `kabelberechnung` |
 | `Kurzschlussberechnung.py` | Vorläufer von `kurzschlussberechnung` (Kern übernommen) |
 
+### leistungsrechner
+
+```bash
+python3 leistungsrechner.py <Strom> [--u 400] [--phi 0.85] [--phase L1]
+```
+
+Wirk-/Blind-/Scheinleistung aus Strom + Spannung + cos phi. `Strom` als Betrag
+(`16`) oder Vektor (`3+4j`); `--phase L1/L2/L3` = 1-phasig (default 3-phasig).
+
+---
+
+## Mitwirken
+
+Pull Requests willkommen. Grundsatz: jede Änderung auf einem `wip/*`-Branch,
+PR gegen `main`. Nur Python-Standardbibliothek.
+
 ---
 
 ## Lizenz
