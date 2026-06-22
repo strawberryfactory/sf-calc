@@ -65,15 +65,22 @@ Legt ein `.md` mit piag-pdf-kompatiblem Frontmatter im PIAG-Projektordner ab
 
 Iz-Tabellen werden **nur verifiziert** genutzt — kein Raten. Stand:
 
-- ✅ **Verlegeart C**, Cu, 70 °C (FE05/PVC), 1- und 3-phasig — verifiziert
-  gegen die reviewten Skripte.
-- ⏳ Übrige Verlegearten (A1/A2/B1/B2/D/E/F/G) und weitere Kabel/Materialien:
-  Slots vorhanden, Werte werden aus NIN/Paperless nachgepflegt und von
-  Samuel freigegeben. `calc` verweigert nicht-verifizierte Kombinationen mit
-  klarer Meldung. Abdeckung: `kabelberechnung show --tabellen`.
+- ✅ **A1, A2, B1, B2, C, D und E**, Kupfer, PVC (70 °C) und VPE/EPR (90 °C),
+  je 1- und 3-phasig — abgelesen aus **NIN SN 411000:2025**, 5.2.3.1.1.11,
+  Tab. 4–7 und 12/14 (Quelle: `referenz/nin_strombelastbarkeit_260622.pdf`).
+- ⏳ **F/G** (einadrige Kabel — brauchen zusätzliche Anordnungs-Dimension)
+  und **Aluminium** (braucht Al-Kabeltyp + Al-R′ für den Spannungsfall):
+  Daten liegen im NIN-PDF, Modellierung folgt im nächsten PR.
+
+`calc` verweigert nicht-verifizierte Kombinationen mit klarer Meldung.
+Abdeckung: `kabelberechnung show --tabellen`.
 
 Korrekturfaktoren (Temperatur Tab. B.52.14, Häufung Tab. B.52.17) und die
 Reaktanzbeläge X′ sind eingepflegt.
+
+> **Hinweis:** Das frühere `kabelrechnerFE05.py` nutzte unter dem Label
+> „Verlegeart C" faktisch die **B1**-Werte. Dieses Tool verwendet die echten
+> NIN-Spalten — Ergebnisse können daher von den Vorläufer-Skripten abweichen.
 
 ---
 

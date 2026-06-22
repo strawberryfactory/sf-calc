@@ -17,7 +17,7 @@ Quellen:
 """
 
 # ============================================================
-# Verlegearten (IEC 60364-5-52 Referenz-Verlegearten)
+# Verlegearten nach NIN 5.2.3 Tabelle 2 (= IEC 60364-5-52)
 # ============================================================
 VERLEGEARTEN = {
     "A1": "Aderleitungen im Rohr in waermegedaemmter Wand",
@@ -25,10 +25,9 @@ VERLEGEARTEN = {
     "B1": "Aderleitungen im Rohr auf/in Wand",
     "B2": "Mehradriges Kabel im Rohr auf/in Wand",
     "C":  "Kabel direkt auf/in Wand (mehradrig)",
-    "D1": "Mehradriges Kabel im Rohr im Erdreich",
-    "D2": "Kabel direkt im Erdreich",
+    "D":  "Kabel im Erdreich (Rohr oder direkt)",
     "E":  "Mehradriges Kabel frei in Luft",
-    "F":  "Einadrige Kabel frei in Luft (gebuendelt)",
+    "F":  "Einadrige Kabel frei in Luft (Beruehrung)",
     "G":  "Einadrige Kabel frei in Luft (mit Abstand)",
 }
 
@@ -45,27 +44,90 @@ QUERSCHNITTE = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240, 
 # Wert None = noch nicht eingepflegt (siehe IZ_STATUS).
 # ============================================================
 
-IZ = {
-    # --- Verlegeart C, Cu, PVC/halogenfrei 70 C -------------------------
-    # VERIFIZIERT gegen Samuels kabelrechnerFE05.py / Kabelrechner1phFE05.py
-    # (Review-Stand dort), Werte >120 mm2 aus IEC B.52.4-Logik (PVC-Spalte).
-    ("C", "Cu", "PVC", 3): {
-        1.5: 15.5, 2.5: 21, 4: 28, 6: 36, 10: 50, 16: 68, 25: 89, 35: 110,
-        50: 134, 70: 171, 95: 207, 120: 239, 150: 272, 185: 310, 240: 364, 300: None,
+# Quelle aller Iz-Werte: NIN SN 411000:2025, 5.2.3.1.1.11, Tabellen 4-7
+# (A1/A2/B1/B2/C/D) und Tabellen 12/14 (E), je 30 C Umgebung / 20 C Erdreich.
+# Visuell aus dem Norm-PDF abgelesen (referenz/nin_strombelastbarkeit_260622.pdf).
+#
+# Spaltenreihenfolge der A-D-Tabellen: (A1, A2, B1, B2, C, D)
+_AD_SPALTEN = ("A1", "A2", "B1", "B2", "C", "D")
+
+# (isolation, n_leiter) -> { querschnitt: (A1, A2, B1, B2, C, D) }
+_NIN_AD_CU = {
+    # NIN Tab. 4 — PVC 70 C, zwei belastete Leiter, Kupfer
+    ("PVC", 2): {
+        1.5: (14.5, 14, 17.5, 16.5, 19.5, 22), 2.5: (19.5, 18.5, 24, 23, 27, 29),
+        4: (26, 25, 32, 30, 36, 37), 6: (34, 32, 41, 38, 46, 46),
+        10: (46, 43, 57, 52, 63, 60), 16: (61, 57, 76, 69, 85, 78),
+        25: (80, 75, 101, 90, 112, 99), 35: (99, 92, 125, 111, 138, 119),
+        50: (119, 110, 151, 133, 168, 140), 70: (151, 139, 192, 168, 213, 173),
+        95: (182, 167, 232, 201, 258, 204), 120: (210, 192, 269, 232, 299, 231),
+        150: (240, 219, 300, 258, 344, 261), 185: (273, 248, 341, 294, 392, 292),
+        240: (321, 291, 400, 344, 461, 336), 300: (367, 334, 458, 394, 530, 379),
     },
-    ("C", "Cu", "PVC", 2): {
-        1.5: 17.5, 2.5: 24, 4: 32, 6: 41, 10: 57, 16: 76, 25: 101, 35: 125,
-        50: 151, 70: 192, 95: 232, 120: 269, 150: 309, 185: 353, 240: 415, 300: None,
+    # NIN Tab. 6 — PVC 70 C, drei belastete Leiter, Kupfer
+    ("PVC", 3): {
+        1.5: (13.5, 13, 16.5, 15, 17.5, 18), 2.5: (18, 17.5, 21, 20, 24, 24),
+        4: (24, 23, 28, 27, 32, 30), 6: (31, 29, 36, 34, 41, 38),
+        10: (42, 39, 50, 46, 57, 50), 16: (56, 52, 68, 62, 76, 64),
+        25: (73, 68, 89, 80, 96, 82), 35: (89, 83, 110, 99, 119, 98),
+        50: (108, 99, 134, 118, 144, 116), 70: (136, 125, 171, 149, 184, 143),
+        95: (164, 150, 207, 179, 223, 169), 120: (188, 172, 239, 206, 259, 192),
+        150: (216, 196, 262, 225, 299, 217), 185: (245, 223, 296, 255, 341, 243),
+        240: (286, 261, 346, 297, 403, 280), 300: (328, 298, 394, 339, 464, 316),
+    },
+    # NIN Tab. 5 — VPE/EPR 90 C, zwei belastete Leiter, Kupfer
+    ("XLPE", 2): {
+        1.5: (19, 18.5, 23, 22, 24, 25), 2.5: (26, 25, 31, 30, 33, 33),
+        4: (35, 33, 42, 40, 45, 43), 6: (45, 42, 54, 51, 58, 53),
+        10: (61, 57, 75, 69, 80, 71), 16: (81, 76, 100, 91, 107, 91),
+        25: (106, 99, 133, 119, 138, 116), 35: (131, 121, 164, 146, 171, 139),
+        50: (158, 145, 198, 175, 209, 164), 70: (200, 183, 253, 221, 269, 203),
+        95: (241, 220, 306, 265, 328, 239), 120: (278, 253, 354, 305, 382, 271),
+        150: (318, 290, 393, 334, 441, 306), 185: (362, 329, 449, 384, 506, 343),
+        240: (424, 386, 528, 459, 599, 395), 300: (486, 442, 603, 532, 693, 446),
+    },
+    # NIN Tab. 7 — VPE/EPR 90 C, drei belastete Leiter, Kupfer
+    ("XLPE", 3): {
+        1.5: (17, 16.5, 20, 19.5, 22, 21), 2.5: (23, 22, 28, 26, 30, 28),
+        4: (31, 30, 37, 35, 40, 36), 6: (40, 38, 48, 44, 52, 44),
+        10: (54, 51, 66, 60, 71, 58), 16: (73, 68, 88, 80, 96, 75),
+        25: (95, 89, 117, 105, 119, 96), 35: (117, 109, 144, 128, 147, 115),
+        50: (141, 130, 175, 154, 179, 135), 70: (179, 164, 222, 194, 229, 167),
+        95: (216, 197, 269, 233, 278, 197), 120: (249, 227, 312, 268, 322, 223),
+        150: (285, 259, 342, 300, 371, 251), 185: (324, 295, 384, 340, 424, 261),
+        240: (380, 346, 450, 398, 500, 324), 300: (435, 396, 514, 455, 576, 365),
     },
 }
 
-# Welche (verlegeart, material, isolation, n) sind eingepflegt + verifiziert?
-# Alles, was hier nicht "verifiziert" ist, gilt als OFFEN und wird vom
-# Rechenkern verweigert (kein Raten).
-IZ_STATUS = {
-    ("C", "Cu", "PVC", 3): "verifiziert: Samuel-Skript kabelrechnerFE05.py",
-    ("C", "Cu", "PVC", 2): "verifiziert: Samuel-Skript Kabelrechner1phFE05.py",
+# Verlegeart E (mehradriges Kabel frei in Luft), Kupfer.
+# (isolation, n_leiter) -> { querschnitt: Iz }
+# NIN Tab. 12 Spalten 1/2 (PVC), Tab. 14 Spalten 1/2 (VPE/EPR).
+_NIN_E_CU = {
+    ("PVC", 2): {1.5: 22, 2.5: 30, 4: 40, 6: 51, 10: 70, 16: 94, 25: 119, 35: 148,
+                 50: 180, 70: 232, 95: 282, 120: 328, 150: 379, 185: 434, 240: 514, 300: 593},
+    ("PVC", 3): {1.5: 18.5, 2.5: 25, 4: 34, 6: 43, 10: 60, 16: 80, 25: 101, 35: 126,
+                 50: 153, 70: 196, 95: 238, 120: 276, 150: 319, 185: 364, 240: 430, 300: 497},
+    ("XLPE", 2): {1.5: 26, 2.5: 36, 4: 49, 6: 63, 10: 86, 16: 115, 25: 149, 35: 185,
+                  50: 225, 70: 289, 95: 352, 120: 410, 150: 473, 185: 542, 240: 641, 300: 741},
+    ("XLPE", 3): {1.5: 23, 2.5: 32, 4: 42, 6: 54, 10: 75, 16: 100, 25: 127, 35: 158,
+                  50: 192, 70: 246, 95: 298, 120: 346, 150: 399, 185: 456, 240: 538, 300: 621},
 }
+
+
+def _baue_iz():
+    """Setzt IZ + IZ_STATUS aus den NIN-Spaltentabellen zusammen."""
+    iz, status = {}, {}
+    for (iso, n), tab in _NIN_AD_CU.items():
+        for i, va in enumerate(_AD_SPALTEN):
+            iz[(va, "Cu", iso, n)] = {s: werte[i] for s, werte in tab.items()}
+            status[(va, "Cu", iso, n)] = "verifiziert: NIN SN 411000:2025 Tab. 4-7"
+    for (iso, n), tab in _NIN_E_CU.items():
+        iz[("E", "Cu", iso, n)] = dict(tab)
+        status[("E", "Cu", iso, n)] = "verifiziert: NIN SN 411000:2025 Tab. 12/14"
+    return iz, status
+
+
+IZ, IZ_STATUS = _baue_iz()
 
 
 def iz_verfuegbar(verlegeart, material, isolation, n_leiter):
