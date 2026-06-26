@@ -68,7 +68,7 @@ def cmd_show(args):
         print(f"  Teuerung p.a.    {A.prozent(cfg['teuerung'])}")
         print(f"  Endalter Plan    {cfg['lebenserwartung']}")
         print(f"  Ersatzquote Ziel {A.prozent(cfg['ersatzquote'])}")
-        print("  ⚠ Annahmen sind mit Kunde/BCO zu bestätigen.")
+        print("  ⚠ Annahmen sind mit Kunde zu bestätigen.")
     if args.tabellen:
         yr, ahv = T.jahr_oder_neuestes(T.AHV, cfg["jahr"])
         yrb, bvg = T.jahr_oder_neuestes(T.BVG, cfg["jahr"])

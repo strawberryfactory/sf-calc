@@ -100,7 +100,7 @@ ANNAHMEN_DEFAULT = {
     "teuerung": 0.010,                  # angenommene Teuerung p. a.
     "lebenserwartung": 90,              # Planungshorizont Endalter (konservativ)
     "ersatzquote_ziel": 0.80,           # Zielrente in % des letzten Einkommens
-    "quelle": "Planungsannahmen – mit Kunde/BCO zu bestätigen",
+    "quelle": "Planungsannahmen – mit Kunde zu bestätigen",
     "verifiziert": False,               # IMMER vom Berater zu setzen
 }
 
