@@ -28,9 +28,44 @@ AHV = {
         "rente_min_monat": 1260.0,
         "plafond_ehepaar_monat": 3780.0,
         "voll_beitragsjahre": 44,
-        "quelle": "BSV/AHV-IV, Rentenskala 44, Stand 2025",
-        "verifiziert": False,           # vor Einsatz gegen offizielle Mitteilung prüfen
+        "quelle": "BSV/AHV-IV, Rentenskala 44, Stand 2025 (Rentenanpassung 2025)",
+        "verifiziert": True,            # offiziell publizierte Werte 2025
     },
+}
+
+# ─────────────────────────────────────────────────────────────
+# AHV21 — Referenzalter (ordentliches Rentenalter), in Kraft seit 1.1.2024
+# Männer: 65. Frauen: schrittweise Anhebung 64 → 65 über die Übergangs-
+# generation (Jg. 1961–1963 gestaffelt, ab Jg. 1964 = 65). Gesetzlich eindeutig.
+# ─────────────────────────────────────────────────────────────
+AHV_REFERENZALTER = {
+    "mann": 65.0,
+    "frau_bis_1960": 64.0,
+    "frau_uebergang": {          # Jahrgang → Referenzalter in Jahren
+        1961: 64.25,             # 64 Jahre + 3 Monate
+        1962: 64.50,             # 64 Jahre + 6 Monate
+        1963: 64.75,             # 64 Jahre + 9 Monate
+    },
+    "frau_ab_1964": 65.0,
+    "quelle": "AHV21 (Revision AHVG, in Kraft 1.1.2024), BSV/AHV-IV",
+    "verifiziert": True,         # Referenzalter-Stufen sind gesetzlich festgelegt
+}
+
+# ─────────────────────────────────────────────────────────────
+# AHV — Rentenvorbezug: lebenslange Kürzung der Altersrente.
+# Reguläre Sätze: 6.8 % je vorbezogenem Jahr (anteilig pro Monat), Vorbezug
+# bis 2 Jahre vor Referenzalter.
+# ACHTUNG Übergangsgeneration Frauen (Jg. 1961–1969): REDUZIERTE, einkommens-
+# abhängige Sonderkürzungssätze + Vorbezug bereits ab 62 möglich. Diese
+# Sondersätze sind NICHT abgebildet (einkommensabhängige Tabelle) → der
+# Rechenkern warnt und rechnet nicht scheingenau.
+# ─────────────────────────────────────────────────────────────
+AHV_VORBEZUG = {
+    "kuerzung_pro_jahr": 0.068,
+    "frueheste_vorbezugsjahre_regulaer": 2,        # ab Referenzalter − 2
+    "uebergangsgeneration_jahrgaenge": (1961, 1969),
+    "quelle": "BSV/AHV-IV, Vorbezug Altersrente (reguläre Sätze)",
+    "verifiziert": False,        # Sätze + Übergangs-Sonderregeln vor Einsatz prüfen
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -74,7 +109,7 @@ SAEULE_3A = {
         "max_ohne_pk_quote": 0.20,
         "max_ohne_pk_deckel": 36288.0,
         "quelle": "ESTV, Stand 2025",
-        "verifiziert": False,
+        "verifiziert": True,            # offiziell publizierte Werte 2025
     },
 }
 
@@ -119,3 +154,22 @@ def altersgutschrift_satz(alter: int):
         if lo <= alter <= hi:
             return satz
     return 0.0
+
+
+def referenzalter_ahv(jahrgang: int, geschlecht: str):
+    """AHV-Referenzalter (Jahre) aus Jahrgang + Geschlecht nach AHV21.
+
+    geschlecht: 'mann' oder 'frau' (auch 'm'/'f'/'w'). Männer: 65.
+    Frauen: bis Jg. 1960 = 64, 1961–1963 gestaffelt, ab 1964 = 65.
+    """
+    r = AHV_REFERENZALTER
+    g = geschlecht.strip().lower()
+    if g in ("mann", "m", "männlich", "maennlich"):
+        return r["mann"]
+    if g in ("frau", "f", "w", "weiblich"):
+        if jahrgang <= 1960:
+            return r["frau_bis_1960"]
+        if jahrgang in r["frau_uebergang"]:
+            return r["frau_uebergang"][jahrgang]
+        return r["frau_ab_1964"]
+    raise ValueError(f"Unbekanntes Geschlecht '{geschlecht}' (erwartet mann/frau).")
