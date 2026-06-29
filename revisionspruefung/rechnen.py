@@ -64,6 +64,30 @@ def pruefe(cfg: dict) -> dict:
                                  _ok(True, summe, bg),
                                  f"Zuweisung+Dividende+Vortrag {summe:.2f} = Bilanzgewinn {bg:.2f}"))
 
+    # 4b) Ausschüttung vs. Liquidität / Going Concern (Art. 675/725 OR n.F.)
+    # Eine Dividende darf nicht nur rechnerisch aus dem Bilanzgewinn zulässig sein,
+    # sie muss auch liquide bezahlbar sein. Forderungen L+L sind erst nach Geldeingang
+    # verfügbar und zählen hier NICHT als sofortige Deckung.
+    dividende = gv.get("dividende")
+    fm = bil.get("fluessige_mittel")
+    if dividende and fm is not None:
+        forderungen = bil.get("forderungen_llb")
+        deckung = fm - dividende
+        ok = dividende <= fm
+        if ok:
+            befund = (f"Dividende {dividende:.0f} aus flüssigen Mitteln {fm:.0f} bezahlbar "
+                      f"(Rest {deckung:.0f}).")
+        else:
+            befund = (f"LIQUIDITÄT: Dividende {dividende:.0f} > flüssige Mittel {fm:.0f} "
+                      f"(Unterdeckung {-deckung:.0f}). Ausschüttbarkeit und Fortführung "
+                      f"prüfen (Art. 675/725 OR n.F.).")
+            if forderungen is not None:
+                befund += (f" Forderungen L+L {forderungen:.0f} stehen erst nach "
+                           f"Geldeingang zur Verfügung.")
+        checks.append(_check("Liquidität Ausschüttung (Art. 675/725 OR)", ok, befund,
+                             dividende=round(dividende), fluessige_mittel=round(fm),
+                             deckung=round(deckung)))
+
     # 5) Kapitalschutz Art. 725a/725b OR
     ek = bil.get("eigenkapital")
     ak = bil.get("aktienkapital", 0)
@@ -130,7 +154,8 @@ def pruefe(cfg: dict) -> dict:
 
     formell_ok = all(c["ok"] for c in checks
                      if c["pruefung"].startswith(("Bilanz", "Jahresgewinn", "Bilanzgewinn",
-                                                  "Gewinnverwendung", "Kapitalschutz")))
+                                                  "Gewinnverwendung", "Liquidität",
+                                                  "Kapitalschutz")))
     wesentliche_abweichungen = [a for a in analytik if a["wesentlich"]]
 
     return {
@@ -145,7 +170,9 @@ def pruefe(cfg: dict) -> dict:
                "Wesentliche Vorjahresabweichungen festgestellt — gemäss SER mit Befragungen "
                "und Detailprüfungen zu klären, bevor das Prüfungsurteil abgegeben wird. ")
             if formell_ok else
-            "FORMELLE BEANSTANDUNG — Jahresrechnung stimmt nicht ab; vor Berichterstattung klären."),
+            "FORMELLE BEANSTANDUNG — eine Pflichtprüfung (Abstimmung, Gewinnverwendung, "
+            "Liquidität/Ausschüttung oder Kapitalschutz) ist nicht erfüllt; vor "
+            "Berichterstattung klären."),
         "warnungen": [
             "Tool stellt Sachverhalte fest und flaggt Auffälligkeiten; das Prüfungsurteil "
             "(inkl. Befragungen/Detailprüfungen nach SER) bleibt beim zugelassenen Revisor.",
