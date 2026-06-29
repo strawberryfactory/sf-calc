@@ -7,7 +7,8 @@ JR = {
     "bilanz": {"total_aktiven": 1000000, "total_passiven": 1000000,
                "aktienkapital": 100000, "gesetzliche_reserven": 50000,
                "eigenkapital": 500000, "vortrag": 50000,
-               "jahresgewinn": 200000, "bilanzgewinn": 250000},
+               "jahresgewinn": 200000, "bilanzgewinn": 250000,
+               "fluessige_mittel": 300000, "forderungen_llb": 250000},
     "er": {"nettoerloes": 2000000, "bruttogewinn": 1500000, "ebitda": 400000,
            "jahresgewinn": 200000, "personalaufwand": -900000},
     "gewinnverwendung": {"bilanzgewinn": 250000, "zuweisung_reserven": 0,
@@ -28,6 +29,29 @@ def test_formelle_checks_ok():
     assert _check(r, "Bilanz balanciert")["ok"]
     assert _check(r, "Gewinnverwendung")["ok"]        # 0+200000+50000 = 250000
     assert _check(r, "Bilanzgewinn")["ok"]            # 50000+200000 = 250000
+
+
+def test_liquiditaet_ausschuettung_gedeckt():
+    c = _check(R.pruefe(JR), "Liquidität Ausschüttung")
+    assert c["ok"] is True
+    assert c["deckung"] == 100000          # 300000 - 200000
+
+
+def test_liquiditaet_ausschuettung_unterdeckung():
+    # Dividende übersteigt die flüssigen Mittel — Forderungen L+L zählen nicht als Deckung
+    jr = {**JR,
+          "bilanz": {**JR["bilanz"], "fluessige_mittel": 290060, "forderungen_llb": 763759},
+          "gewinnverwendung": {**JR["gewinnverwendung"], "dividende": 600000,
+                               "bilanzgewinn": 650000}}
+    c = _check(R.pruefe(jr), "Liquidität Ausschüttung")
+    assert c["ok"] is False and "LIQUIDITÄT" in c["befund"]
+    assert R.pruefe(jr)["formell_ok"] is False
+
+
+def test_liquiditaet_check_entfaellt_ohne_angabe():
+    # Ohne fluessige_mittel wird der Liquiditätscheck nicht erzeugt (kein False-Positive)
+    jr = {**JR, "bilanz": {k: v for k, v in JR["bilanz"].items() if k != "fluessige_mittel"}}
+    assert not [c for c in R.pruefe(jr)["checks"] if c["pruefung"].startswith("Liquidität")]
 
 
 def test_revisionsart_eingeschraenkt():

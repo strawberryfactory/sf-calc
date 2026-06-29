@@ -69,7 +69,8 @@ def cmd_beispiel(args):
         "bilanz": {"total_aktiven": 1000000, "total_passiven": 1000000,
                    "aktienkapital": 100000, "gesetzliche_reserven": 50000,
                    "eigenkapital": 500000, "vortrag": 50000,
-                   "jahresgewinn": 200000, "bilanzgewinn": 250000},
+                   "jahresgewinn": 200000, "bilanzgewinn": 250000,
+                   "fluessige_mittel": 300000, "forderungen_llb": 250000},
         "er": {"nettoerloes": 2000000, "bruttogewinn": 1500000, "ebitda": 400000,
                "ebit": 350000, "jahresgewinn": 200000, "personalaufwand": -900000},
         "gewinnverwendung": {"bilanzgewinn": 250000, "zuweisung_reserven": 0,
@@ -90,7 +91,8 @@ def build_parser():
     sp = sub.add_parser("pruefen", help="Jahresrechnung prüfen")
     sp.add_argument("--config", required=True)
     sp.add_argument("--json", action="store_true")
-    sp.add_argument("--protokoll", default=None, help="Markdown-Prüfnachweis (anhängen)")
+    sp.add_argument("--protokoll", default=None,
+                    help="Markdown-Prüfnachweis (wird angehängt; vor Neulauf Datei löschen)")
     sp.set_defaults(func=cmd_pruefen)
     sp = sub.add_parser("beispiel", help="Beispiel-Config ausgeben")
     sp.set_defaults(func=cmd_beispiel)

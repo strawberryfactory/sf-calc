@@ -20,6 +20,9 @@ python3 -m revisionspruefung pruefen --config jr.json --json --protokoll nachwei
 - **Bilanz balanciert** (Aktiven = Passiven).
 - **Jahresgewinn ER = Bilanz**, **Bilanzgewinn = Vortrag + Jahresgewinn**.
 - **Gewinnverwendung** stimmt auf den Bilanzgewinn.
+- **Liquidität der Ausschüttung** Art. 675/725 OR n.F.: Dividende muss aus den **flüssigen
+  Mitteln** bezahlbar sein (Forderungen L+L zählen nicht als sofortige Deckung). Greift nur,
+  wenn `bilanz.fluessige_mittel` angegeben ist.
 - **Kapitalschutz** Art. 725a (Kapitalverlust) / 725b (Überschuldung).
 - **Revisionsart** (ordentlich/eingeschränkt/Opting-out) nach Art. 727/727a.
 - **Analytische Prüfung**: Vorjahresvergleich (wesentliche Abweichungen) + Kennzahlen
