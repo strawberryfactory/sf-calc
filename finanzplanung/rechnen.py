@@ -70,6 +70,76 @@ def ahv_altersrente(beitragsjahre, durchschnittseinkommen, jahr=2024):
 
 
 # ─────────────────────────────────────────────────────────────
+# AHV21 — Referenzalter aus Jahrgang + Geschlecht
+# ─────────────────────────────────────────────────────────────
+def ahv_referenzalter(jahrgang, geschlecht):
+    warnungen = []
+    ra = T.referenzalter_ahv(int(jahrgang), geschlecht)
+    jahre = int(ra)
+    monate = round((ra - jahre) * 12)
+    tab = T.AHV_REFERENZALTER
+    uebergang = jahrgang in tab["frau_uebergang"]
+    if uebergang:
+        warnungen.append(
+            f"Frau Jg. {jahrgang} gehört zur AHV21-Übergangsgeneration → "
+            f"Referenzalter {jahre} Jahre {monate} Monate (nicht 64).")
+    return {
+        "referenzalter": ra,
+        "referenzalter_jahre": jahre,
+        "referenzalter_monate": monate,
+        "uebergangsgeneration": bool(uebergang),
+        "quelle": tab["quelle"],
+        "warnungen": warnungen,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# AHV — Rentenvorbezug: lebenslange Kürzung der Altersrente
+# Reguläre Sätze (6.8 %/Jahr). Übergangsgeneration Frauen (1961–1969):
+# einkommensabhängige Sondersätze → hier NICHT gerechnet, sondern gewarnt.
+# ─────────────────────────────────────────────────────────────
+def ahv_vorbezug(rente_voll_jahr, jahrgang, geschlecht, bezugsalter):
+    warnungen = []
+    v = T.AHV_VORBEZUG
+    _warn_unverifiziert(v, "AHV-Vorbezug", warnungen)
+    ra = T.referenzalter_ahv(int(jahrgang), geschlecht)
+    vorbezug_jahre = ra - float(bezugsalter)
+    if vorbezug_jahre <= 0:
+        raise RechenFehler(
+            f"Bezugsalter {bezugsalter} liegt nicht vor dem Referenzalter {ra} "
+            f"— kein Vorbezug.")
+    if vorbezug_jahre > v["frueheste_vorbezugsjahre_regulaer"] + 1e-9:
+        warnungen.append(
+            f"Vorbezug von {vorbezug_jahre:.2f} Jahren überschreitet den regulären "
+            f"Rahmen ({v['frueheste_vorbezugsjahre_regulaer']} Jahre vor Referenzalter). "
+            f"Frühestmöglicher AHV-Bezug regulär ab {ra - v['frueheste_vorbezugsjahre_regulaer']:.2f}; "
+            f"die Phase davor ist anders zu überbrücken (PK-Überbrückungsrente / Erspartes).")
+    lo, hi = v["uebergangsgeneration_jahrgaenge"]
+    g = geschlecht.strip().lower()
+    if g in ("frau", "f", "w", "weiblich") and lo <= jahrgang <= hi:
+        warnungen.append(
+            f"Frau Jg. {jahrgang} ist in der Übergangsgeneration ({lo}–{hi}): es gelten "
+            f"REDUZIERTE, einkommensabhängige Kürzungssätze (und Vorbezug ab 62 möglich). "
+            f"Die hier verwendeten regulären {v['kuerzung_pro_jahr']*100:.1f} %/Jahr sind "
+            f"eine Obergrenze — Sondersätze separat über die Ausgleichskasse bestimmen.")
+    kuerzung_quote = min(vorbezug_jahre, v["frueheste_vorbezugsjahre_regulaer"]) * v["kuerzung_pro_jahr"]
+    rente_gekuerzt = float(rente_voll_jahr) * (1 - kuerzung_quote)
+    warnungen.append(
+        "Vorbezugskürzung ist lebenslang und gilt auch nach Erreichen des Referenzalters.")
+    return {
+        "rente_voll_jahr": round(float(rente_voll_jahr), 0),
+        "bezugsalter": float(bezugsalter),
+        "referenzalter": ra,
+        "vorbezug_jahre": round(vorbezug_jahre, 2),
+        "kuerzung_quote": round(kuerzung_quote, 4),
+        "kuerzung_jahr": round(float(rente_voll_jahr) * kuerzung_quote, 0),
+        "rente_gekuerzt_jahr": round(rente_gekuerzt, 0),
+        "rente_gekuerzt_monat": round(rente_gekuerzt / 12, 0),
+        "warnungen": warnungen,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 2. Säule — BVG-Rente aus Altersguthaben
 # Rente = Altersguthaben × Umwandlungssatz. Alternative: Kapitalbezug.
 # ─────────────────────────────────────────────────────────────

@@ -5,10 +5,12 @@ cli.py — Kommandozeile der Finanzplanung (Schweizer Vorsorge).
   finanzplanung show [--tabellen] [--annahmen]
   finanzplanung set rendite 0.02
   finanzplanung ahv --beitragsjahre 44 --einkommen 90000
+  finanzplanung referenzalter --jahrgang 1971 --geschlecht frau
+  finanzplanung ahv-vorbezug --rente 30240 --jahrgang 1971 --geschlecht frau --bezugsalter 63
   finanzplanung bvg-rente --guthaben 500000
   finanzplanung bvg-projektion --guthaben 300000 --koordlohn 50000 --alter 50 --pension 65
   finanzplanung saeule3a --einkommen 120000 --mit-pk
-  finanzplanung luecke --einkommen 100000 --ahv 29400 --bvg 34000
+  finanzplanung luecke --einkommen 100000 --ahv 30240 --bvg 34000
   finanzplanung kapitalbedarf --luecke 20000 --jahre 25
   finanzplanung verzehr --kapital 500000 --entnahme 30000
   finanzplanung tragbarkeit --wert 1200000 --hypothek 900000 --einkommen 180000
@@ -96,6 +98,27 @@ def cmd_ahv(args):
         f"\n  Rente        {A.chf0(r['rente_jahr'])} /Jahr  ({A.chf0(r['rente_monat'])} /Mt)"
         f"\n  Vollrente    {A.chf0(r['vollrente_jahr'])} /Jahr"
         f"\n  Skalenfaktor {r['skalenfaktor']}  (Beitragsjahre)"))
+
+
+def cmd_referenzalter(args):
+    res = R.ahv_referenzalter(args.jahrgang, args.geschlecht)
+    _emit(res, args, lambda r: (
+        A.titel("AHV-Referenzalter (AHV21)") +
+        f"\n  Jahrgang {args.jahrgang}, {args.geschlecht}"
+        f"\n  Referenzalter {r['referenzalter_jahre']} Jahre {r['referenzalter_monate']} Monate"
+        + ("  (Übergangsgeneration)" if r['uebergangsgeneration'] else "")))
+
+
+def cmd_ahv_vorbezug(args):
+    res = R.ahv_vorbezug(args.rente, args.jahrgang, args.geschlecht, args.bezugsalter)
+    _emit(res, args, lambda r: (
+        A.titel("AHV-Rentenvorbezug (lebenslange Kürzung)") +
+        f"\n  Vollrente       {A.chf0(r['rente_voll_jahr'])} /Jahr"
+        f"\n  Bezugsalter     {r['bezugsalter']}  (Referenzalter {r['referenzalter']})"
+        f"\n  Vorbezug        {r['vorbezug_jahre']} Jahre"
+        f"\n  Kürzung         {A.prozent(r['kuerzung_quote'])}  ({A.chf0(r['kuerzung_jahr'])}/Jahr)"
+        f"\n  Gekürzte Rente  {A.chf0(r['rente_gekuerzt_jahr'])} /Jahr  "
+        f"({A.chf0(r['rente_gekuerzt_monat'])}/Mt)"))
 
 
 def cmd_bvg_rente(args):
@@ -271,6 +294,18 @@ def build_parser():
     sp.add_argument("--beitragsjahre", type=float, required=True)
     sp.add_argument("--einkommen", type=float, required=True, help="massg. Ø-Jahreseinkommen")
     add_json(sp); sp.set_defaults(func=cmd_ahv)
+
+    sp = sub.add_parser("referenzalter", help="AHV-Referenzalter aus Jahrgang + Geschlecht (AHV21)")
+    sp.add_argument("--jahrgang", type=int, required=True)
+    sp.add_argument("--geschlecht", required=True, help="mann | frau")
+    add_json(sp); sp.set_defaults(func=cmd_referenzalter)
+
+    sp = sub.add_parser("ahv-vorbezug", help="AHV-Rentenvorbezug: lebenslange Kürzung")
+    sp.add_argument("--rente", type=float, required=True, help="ungekürzte AHV-Jahresrente")
+    sp.add_argument("--jahrgang", type=int, required=True)
+    sp.add_argument("--geschlecht", required=True, help="mann | frau")
+    sp.add_argument("--bezugsalter", type=float, required=True)
+    add_json(sp); sp.set_defaults(func=cmd_ahv_vorbezug)
 
     sp = sub.add_parser("bvg-rente", help="BVG-Rente aus Altersguthaben")
     sp.add_argument("--guthaben", type=float, required=True)

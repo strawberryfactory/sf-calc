@@ -27,6 +27,8 @@ python3 -m finanzplanung plan ... --json          # maschinenlesbar für Skills
 | `show [--tabellen] [--annahmen]` | Normwerte / Planungsannahmen anzeigen |
 | `set <annahme> <wert>` / `reset` | Planungsannahmen (rendite, teuerung, …) |
 | `ahv` | AHV-Altersrente (Skala 44, Näherung) |
+| `referenzalter` | AHV-Referenzalter aus Jahrgang + Geschlecht (AHV21-Übergang) |
+| `ahv-vorbezug` | AHV-Rentenvorbezug: lebenslange Kürzung (reguläre Sätze) |
 | `bvg-rente` | BVG-Rente aus Altersguthaben (Umwandlungssatz) |
 | `bvg-projektion` | Altersguthaben bis Pensionierung fortschreiben |
 | `saeule3a` | Maximaler 3a-Beitrag (mit/ohne PK) |
@@ -55,8 +57,13 @@ python3 -m finanzplanung plan --einkommen 100000 --bvg-rente 49732 --protokoll n
 - **Säule 3a** ESTV (Maximalbeiträge)
 - **Tragbarkeit** FINMA-RS / Banken-Selbstregulierung
 
-Werte sind **Stand 2024** (teils 2025 hinterlegt, als nicht verifiziert markiert) und vor
-produktivem Einsatz gegen die aktuelle offizielle Mitteilung zu prüfen.
+- **AHV21-Referenzalter** (in Kraft 1.1.2024): Männer 65; Frauen bis Jg. 1960 = 64,
+  Jg. 1961–1963 gestaffelt (+3/+6/+9 Monate), ab Jg. 1964 = 65.
+
+Normjahr-Default ist **2025** (AHV-Maximalrente 2'520/Mt = 30'240/Jahr). Die AHV21-Sonder-
+kürzungssätze der Übergangsgeneration Frauen (Jg. 1961–1969) sind **einkommensabhängig und
+nicht abgebildet** — der Vorbezug-Rechner nutzt die regulären 6,8 %/Jahr als Obergrenze und
+warnt. Werte vor produktivem Einsatz gegen die aktuelle offizielle Mitteilung prüfen.
 
 ## Grenzen (ehrlich)
 - AHV-Rente ist eine **Näherung** (lineare Interpolation der Rentenformel); exakt nur via
@@ -70,7 +77,8 @@ produktivem Einsatz gegen die aktuelle offizielle Mitteilung zu prüfen.
 ```bash
 python3 -m pytest finanzplanung/test_finanzplanung.py -q
 ```
-10 Tests, u.a. Validierung des Tragbarkeits-Beispiels (35.4 %, nicht tragbar).
+Tests u.a. Validierung des Tragbarkeits-Beispiels (35.4 %, nicht tragbar) sowie
+AHV21-Referenzalter (Übergangsgeneration) und Vorbezugskürzung.
 
 ## Lizenz
 MIT (analog sf-calc).

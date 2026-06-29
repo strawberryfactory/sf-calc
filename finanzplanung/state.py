@@ -15,7 +15,7 @@ CONFIG_DIR = Path.home() / ".config" / "finanzplanung"
 STATE_FILE = CONFIG_DIR / "state.json"
 
 DEFAULTS = {
-    "jahr": 2024,                                       # Normjahr (AHV/BVG/3a)
+    "jahr": 2025,                                       # Normjahr (AHV/BVG/3a)
     "rendite": T.ANNAHMEN_DEFAULT["rendite"],           # Nettorendite p. a.
     "teuerung": T.ANNAHMEN_DEFAULT["teuerung"],         # Teuerung p. a.
     "lebenserwartung": T.ANNAHMEN_DEFAULT["lebenserwartung"],

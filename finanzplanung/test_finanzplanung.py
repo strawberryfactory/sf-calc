@@ -4,11 +4,53 @@ Ausführen:  python3 -m pytest finanzplanung/test_finanzplanung.py -q
 """
 
 import math
+import pytest
 from finanzplanung import rechnen as R
 
 
 def approx(a, b, tol=1.0):
     return abs(a - b) <= tol
+
+
+# ── AHV21 Referenzalter ───────────────────────────────────────
+def test_referenzalter_mann_65():
+    assert R.ahv_referenzalter(1971, "mann")["referenzalter"] == 65.0
+
+
+def test_referenzalter_frau_ab_1964_65():
+    r = R.ahv_referenzalter(1971, "frau")
+    assert r["referenzalter"] == 65.0
+    assert r["uebergangsgeneration"] is False
+
+
+def test_referenzalter_frau_bis_1960_64():
+    assert R.ahv_referenzalter(1958, "frau")["referenzalter"] == 64.0
+
+
+def test_referenzalter_frau_uebergang_gestaffelt():
+    r = R.ahv_referenzalter(1962, "frau")
+    assert r["referenzalter"] == 64.5            # 64 Jahre + 6 Monate
+    assert r["referenzalter_monate"] == 6
+    assert r["uebergangsgeneration"] is True
+
+
+# ── AHV-Vorbezug ──────────────────────────────────────────────
+def test_ahv_vorbezug_zwei_jahre_kuerzung():
+    # Frau Jg. 1971 (Referenzalter 65), Bezug ab 63 → 2 Jahre Vorbezug → 13.6 %
+    r = R.ahv_vorbezug(30_240, 1971, "frau", 63)
+    assert approx(r["vorbezug_jahre"], 2.0, 0.01)
+    assert approx(r["kuerzung_quote"], 0.136, 0.0001)
+    assert approx(r["rente_gekuerzt_jahr"], 30_240 * (1 - 0.136), 1.0)
+
+
+def test_ahv_vorbezug_uebergangsgeneration_warnt():
+    r = R.ahv_vorbezug(30_240, 1965, "frau", 63)   # Jg. 1965 in 1961–1969
+    assert any("Übergangsgeneration" in w for w in r["warnungen"])
+
+
+def test_ahv_vorbezug_ohne_vorbezug_fehler():
+    with pytest.raises(R.RechenFehler):
+        R.ahv_vorbezug(30_240, 1971, "frau", 65)   # Bezug = Referenzalter
 
 
 def test_tragbarkeit_folienbeispiel():
