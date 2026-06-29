@@ -94,9 +94,12 @@ def mehrjahresplan(cfg: dict) -> dict:
 
     for i in range(n):
         finanzaufwand = zins * darlehen_anfang * (erstjahr_anteil if i == 0 else 1.0)
-        aufwand_betrieb = personal[i] + uebrig[i] + finanzaufwand
+        # EBITDA strikt VOR Zinsen, Steuern, Abschreibungen: nur betrieblicher Aufwand.
+        # Der Finanzaufwand (Zinsen) wird erst zwischen EBIT und EBT abgezogen.
+        aufwand_betrieb = personal[i] + uebrig[i]
         ebitda = ertrag[i] - aufwand_betrieb
-        ebt = ebitda - abschr[i]
+        ebit = ebitda - abschr[i]
+        ebt = ebit - finanzaufwand
         steuern = steuersatz * ebt if ebt > 0 else 0.0
         erfolg = ebt - steuern
 
@@ -112,8 +115,9 @@ def mehrjahresplan(cfg: dict) -> dict:
         er_rows.append({
             "jahr": jahre_labels[i], "ertrag": round(ertrag[i]),
             "personalaufwand": round(personal[i]), "uebriger_aufwand": round(uebrig[i]),
-            "finanzaufwand": round(finanzaufwand), "aufwand_betrieb": round(aufwand_betrieb),
+            "aufwand_betrieb": round(aufwand_betrieb),
             "ebitda": round(ebitda), "abschreibung": round(abschr[i]),
+            "ebit": round(ebit), "finanzaufwand": round(finanzaufwand),
             "ebt": round(ebt), "steuern": round(steuern), "erfolg": round(erfolg),
         })
         bi_rows.append({
@@ -125,13 +129,20 @@ def mehrjahresplan(cfg: dict) -> dict:
             "total_passiven": round(darlehen_rest + eigenkapital),
             "check": round((bank + debitoren + anlagevermoegen) - (darlehen_rest + eigenkapital), 2),
         })
+        cf_operativ = erfolg + abschr[i] - (debitoren - (gf_rows[-1]["_debi"] if gf_rows else 0))
+        # DSCR = Cash vor Schuldendienst / Schuldendienst.
+        # cf_operativ ist nach Zins; für die Deckungssicht den Zins zurückaddieren,
+        # Schuldendienst = Amortisation + Zins (Finanzaufwand).
+        schuldendienst = amort[i] + finanzaufwand
+        dscr = round((cf_operativ + finanzaufwand) / schuldendienst, 2) if schuldendienst else None
         gf_rows.append({
             "jahr": jahre_labels[i],
-            "cashflow_operativ": round(erfolg + abschr[i] - (debitoren - (gf_rows[-1]["_debi"] if gf_rows else 0))),
+            "cashflow_operativ": round(cf_operativ),
             "investition": round(-investition if i == 0 else 0),
             "finanzierung": round((aktienkapital + darlehen if i == 0 else 0) - amort[i]),
             "veraenderung_bank": round(bank - bank_vorjahr),
-            "bank_ende": round(bank), "_debi": debitoren,
+            "bank_ende": round(bank),
+            "schuldendienst": round(schuldendienst), "dscr": dscr, "_debi": debitoren,
         })
         darlehen_anfang = darlehen_rest
         bank_vorjahr = bank
@@ -140,10 +151,19 @@ def mehrjahresplan(cfg: dict) -> dict:
         r.pop("_debi", None)
 
     eingeschwungen = er_rows[-1]
+    letzte_bilanz = bi_rows[-1]
+    # Nettoverschuldung = verzinsliches Fremdkapital − flüssige Mittel (Bank).
+    nettoverschuldung = letzte_bilanz["darlehen"] - letzte_bilanz["bank"]
+    dscr_werte = [r["dscr"] for r in gf_rows if r["dscr"] is not None]
     kennzahlen = {
         "ebitda_marge": round(eingeschwungen["ebitda"] / eingeschwungen["ertrag"], 4) if eingeschwungen["ertrag"] else None,
+        "ebit_marge": round(eingeschwungen["ebit"] / eingeschwungen["ertrag"], 4) if eingeschwungen["ertrag"] else None,
         "ebt_marge": round(eingeschwungen["ebt"] / eingeschwungen["ertrag"], 4) if eingeschwungen["ertrag"] else None,
-        "eigenkapitalquote": round(bi_rows[-1]["eigenkapital"] / bi_rows[-1]["total_passiven"], 4) if bi_rows[-1]["total_passiven"] else None,
+        "eigenkapitalquote": round(letzte_bilanz["eigenkapital"] / letzte_bilanz["total_passiven"], 4) if letzte_bilanz["total_passiven"] else None,
+        "dscr": gf_rows[-1]["dscr"],
+        "dscr_min": min(dscr_werte) if dscr_werte else None,
+        "nettoverschuldung": round(nettoverschuldung),
+        "nettoverschuldung_ebitda": round(nettoverschuldung / eingeschwungen["ebitda"], 2) if eingeschwungen["ebitda"] else None,
     }
     return {
         "firma": cfg.get("firma", ""), "jahre": jahre_labels,
