@@ -32,13 +32,45 @@ def test_bilanz_stimmt():
 def test_er_beziehungen():
     r = R.mehrjahresplan(CFG)
     for er in r["erfolgsrechnung"]:
+        # betrieblicher Aufwand OHNE Finanzaufwand (Zinsen)
         assert approx(er["aufwand_betrieb"],
-                      er["personalaufwand"] + er["uebriger_aufwand"] + er["finanzaufwand"])
+                      er["personalaufwand"] + er["uebriger_aufwand"])
         assert approx(er["ebitda"], er["ertrag"] - er["aufwand_betrieb"])
-        assert approx(er["ebt"], er["ebitda"] - er["abschreibung"])
+        # EBITDA ist VOR Zinsen: Finanzaufwand erst zwischen EBIT und EBT
+        assert approx(er["ebit"], er["ebitda"] - er["abschreibung"])
+        assert approx(er["ebt"], er["ebit"] - er["finanzaufwand"])
         erwartete_steuer = round(0.13 * er["ebt"]) if er["ebt"] > 0 else 0
         assert approx(er["steuern"], erwartete_steuer, 1.0)
         assert approx(er["erfolg"], er["ebt"] - er["steuern"])
+
+
+def test_ebitda_enthaelt_keinen_finanzaufwand():
+    """Regressionsschutz: bei Zins > 0 darf EBITDA sich nicht ändern, wenn nur
+    der Zinssatz variiert — der Finanzaufwand wirkt erst unterhalb EBIT."""
+    cfg_a = dict(CFG, zins=0.0)
+    cfg_b = dict(CFG, zins=0.10)
+    ra = R.mehrjahresplan(cfg_a)["erfolgsrechnung"]
+    rb = R.mehrjahresplan(cfg_b)["erfolgsrechnung"]
+    for a, b in zip(ra, rb):
+        assert approx(a["ebitda"], b["ebitda"])   # EBITDA zinsunabhängig
+        assert approx(a["ebit"], b["ebit"])       # EBIT zinsunabhängig
+        # EBT sinkt bei höherem Zins (Finanzaufwand grösser)
+        assert b["finanzaufwand"] >= a["finanzaufwand"]
+
+
+def test_dscr_und_nettoverschuldung():
+    r = R.mehrjahresplan(CFG)
+    k = r["kennzahlen"]
+    gf = r["geldfluss"]
+    # DSCR im Endjahr = (Cashflow operativ + Zins) / (Amortisation + Zins)
+    letzt = gf[-1]
+    er_letzt = r["erfolgsrechnung"][-1]
+    schuldendienst = CFG["amortisation"][-1] + er_letzt["finanzaufwand"]
+    erwartet = round((letzt["cashflow_operativ"] + er_letzt["finanzaufwand"]) / schuldendienst, 2)
+    assert approx(k["dscr"], erwartet, 0.01)
+    # Nettoverschuldung = Darlehen-Rest − Bank
+    bi_letzt = r["bilanz"][-1]
+    assert approx(k["nettoverschuldung"], bi_letzt["darlehen"] - bi_letzt["bank"], 1.0)
 
 
 def test_abschreibung_linear_mit_erstjahr():

@@ -36,9 +36,16 @@ python3 -m unternehmensfinanzplan plan --config plan.json --protokoll nachweis.m
 ```
 
 ## Output
-Plan-ER (Ertrag → EBITDA → EBT → Steuern → Erfolg), Plan-Bilanz (Bank als Residual,
-Debitoren, Anlagevermögen / Darlehen, Eigenkapital), Geldfluss, Kennzahlen
-(EBITDA-/EBT-Marge, Eigenkapitalquote). `bilanz_ok` bestätigt den Bilanzcheck.
+Plan-ER (Ertrag → EBITDA → EBIT → EBT → Steuern → Erfolg), Plan-Bilanz (Bank als Residual,
+Debitoren, Anlagevermögen / Darlehen, Eigenkapital), Geldfluss (inkl. Schuldendienst und
+DSCR je Jahr), Kennzahlen (EBITDA-/EBIT-/EBT-Marge, Eigenkapitalquote, DSCR inkl. Minimum
+über den Plan, Nettoverschuldung, Nettoverschuldung/EBITDA). `bilanz_ok` bestätigt den
+Bilanzcheck.
+
+**EBITDA** ist strikt *vor* Zinsen, Steuern und Abschreibungen definiert:
+EBITDA = Ertrag − betrieblicher Aufwand (Personal + übriger Aufwand). Der Finanzaufwand
+(Zinsen) wird erst zwischen EBIT und EBT abgezogen: EBIT = EBITDA − Abschreibung,
+EBT = EBIT − Finanzaufwand. **DSCR** = (Cashflow operativ + Zins) / (Amortisation + Zins).
 
 ## Grenzen (ehrlich)
 - Steuer = pauschaler Gewinnsteuersatz (kein kantonaler Tarif, Tax-on-Tax nicht modelliert).
@@ -46,9 +53,10 @@ Debitoren, Anlagevermögen / Darlehen, Eigenkapital), Geldfluss, Kennzahlen
 - Planzahlen beruhen auf Annahmen und sind keine Zusicherung.
 
 ## Tests
-6 Tests mit einer fiktiven Beispiel-Config: prüfen die Beziehungen (EBITDA = Ertrag −
-Aufwand, EBT = EBITDA − Abschreibung, Steuer nur auf Gewinn, Bilanzcheck = 0, sinkendes
-Anlagevermögen/Darlehen).
+Tests mit einer fiktiven Beispiel-Config: prüfen die Beziehungen (EBITDA = Ertrag −
+betrieblicher Aufwand *vor Zinsen*, EBIT = EBITDA − Abschreibung, EBT = EBIT − Finanzaufwand,
+EBITDA bleibt zinsunabhängig, DSCR/Nettoverschuldung, Steuer nur auf Gewinn, Bilanzcheck = 0,
+sinkendes Anlagevermögen/Darlehen).
 
 ## Lizenz
 MIT (analog sf-calc).

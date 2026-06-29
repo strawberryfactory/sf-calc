@@ -70,9 +70,10 @@ def cmd_plan(args):
         ("Ertrag", [r["ertrag"] for r in er]),
         ("Personalaufwand", [r["personalaufwand"] for r in er]),
         ("Übriger Aufwand", [r["uebriger_aufwand"] for r in er]),
-        ("Finanzaufwand", [r["finanzaufwand"] for r in er]),
         ("EBITDA", [r["ebitda"] for r in er]),
         ("Abschreibungen", [r["abschreibung"] for r in er]),
+        ("EBIT", [r["ebit"] for r in er]),
+        ("Finanzaufwand", [r["finanzaufwand"] for r in er]),
         ("EBT", [r["ebt"] for r in er]),
         ("Steuern", [r["steuern"] for r in er]),
         ("Erfolg", [r["erfolg"] for r in er]),
@@ -90,10 +91,27 @@ def cmd_plan(args):
         ("Total Passiven", [r["total_passiven"] for r in bi]),
         ("Bilanzcheck", [r["check"] for r in bi]),
     ])
+    gf = res["geldfluss"]
+    _tabelle("Geldfluss / Schuldendienst", jahre, [
+        ("Cashflow operativ", [r["cashflow_operativ"] for r in gf]),
+        ("Schuldendienst", [r["schuldendienst"] for r in gf]),
+        ("DSCR", [f"{r['dscr']:.2f}×" if r["dscr"] is not None else "n/a" for r in gf]),
+        ("Bank Ende", [r["bank_ende"] for r in gf]),
+    ])
     k = res["kennzahlen"]
-    print(f"\nKennzahlen (Endjahr): EBITDA-Marge {k['ebitda_marge']*100:.1f} % · "
-          f"EBT-Marge {k['ebt_marge']*100:.1f} % · "
-          f"Eigenkapitalquote {k['eigenkapitalquote']*100:.1f} %")
+
+    def _pct(v):
+        return f"{v*100:.1f} %" if v is not None else "n/a"
+
+    def _x(v):
+        return f"{v:.2f}×" if v is not None else "n/a"
+
+    print(f"\nKennzahlen (Endjahr): EBITDA-Marge {_pct(k['ebitda_marge'])} · "
+          f"EBIT-Marge {_pct(k['ebit_marge'])} · EBT-Marge {_pct(k['ebt_marge'])} · "
+          f"Eigenkapitalquote {_pct(k['eigenkapitalquote'])}")
+    print(f"Bank-Kennzahlen: DSCR {_x(k['dscr'])} (Min über Plan {_x(k['dscr_min'])}) · "
+          f"Nettoverschuldung {chf(k['nettoverschuldung'])} · "
+          f"Nettoverschuldung/EBITDA {_x(k['nettoverschuldung_ebitda'])}")
     print(f"Bilanz stimmt: {'ja' if res['bilanz_ok'] else 'NEIN'}")
     for w in res["warnungen"]:
         print("  ⚠ " + w)
